@@ -1,9 +1,8 @@
-# Title Page
-<img src="https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Extra/monitoring-of-virtual-machines.png" align=left>
+# Monitoring of virtual machines
+<img src="https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Extra/monitoring-of-virtual-machines.png">
 
 <br>
-<br>
-Titel på dokumentet<br>
+Monitoring of virtual machines<br>
 Författare<br>
 Publiceringsdatum<br>
 
