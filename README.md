@@ -1,4 +1,6 @@
 # Monitoring of virtual machines
+
+<!--
 <img src="https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Extra/monitoring-of-virtual-machines.png">
 
 <br>
@@ -10,6 +12,30 @@ Publiceringsdatum<br>
 
 ## Abstract
 Kort sammanfattning av dokumentet
+-->
+
+<div>
+  <img src="https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Extra/monitoring-of-virtual-machines.png" width="300" align="left" />
+  <h2>Abstract</h2>
+  <p> 
+  Monitoring of virtual machines on a server, metrics extraction and visualization 
+  <br>
+	<br>
+	<br>
+	<br>
+	<br>
+    <br>
+    <strong>Monitoring of Virtual machines</strong> <br>
+    <strong>Authors:</strong>
+    <i><a href="https://github.com/Filipanderssondev">Filip Andersson</a></i>
+    and
+    <i><a href="https://github.com/JonatanHogild">Jonatan Högild</a></i>
+    <br>
+    dd-mm-yyyy
+    <br clear="left"/>
+  </p>
+</div>
+<br>
 
 ## Table of Contents
 
