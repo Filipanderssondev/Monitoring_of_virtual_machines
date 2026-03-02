@@ -264,7 +264,7 @@ Start the VM. Configure IP-addresses, gateway and DNS, pick 'workstation' as sof
 
 ## Grafana
 
-Showcase-01 should be able to access all deployed services from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`.
+Showcase-01 should be able to access all deployed services from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
 
 #### Add Prometheus as Data Source
 
@@ -277,7 +277,11 @@ http://<metrics-01>:9090
 
 ### Add a dashboard
 
-There already exists plenty of [ready-made dashboard templates](https://grafana.com/grafana/dashboards/) for Grafana we can use. For Node exporter, we'll use the [Node Exporter Full](https://github.com/rfmoz/grafana-dashboards?tab=readme-ov-file#node-exporter-full) template. Dashboards are written in JSON, so if we'd like, we can edit it on the command-line, or graphically in Grafana. 
+There already exists plenty of [ready-made dashboard templates](https://grafana.com/grafana/dashboards/) for Grafana we can use. For Node exporter, we'll use the [Node Exporter Full](https://github.com/rfmoz/grafana-dashboards?tab=readme-ov-file#node-exporter-full) template. Dashboards are written in JSON, so if we'd like, we can edit them on the command-line, or graphically in Grafana. 
+
+## cAdvisor
+
+Next on the monitoring stack is cAdvisor (https://github.com/google/cadvisor) which help provide insight into the containers themselves. 
 
 ## Conclusion
 Slutsats
