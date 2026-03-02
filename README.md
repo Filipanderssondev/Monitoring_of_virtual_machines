@@ -89,8 +89,11 @@ Big thanks to all the people involved in the material I refer to in my links! I 
 
 ## Inplementation
 
-### Deploy node_exporter
-Node_exporter will be deployed on all VMs as a Podman-created container. The following parameters are used:<br>
+### Node exporter
+
+Node exporter is [one of many exporters](https://prometheus.io/docs/instrumenting/exporters/) available to Prometheus. It's purpose is to collect hardware information, and Prometheus collects it. 
+
+Node exporter will be deployed on all VMs as a Podman-created container. The following parameters are used:<br>
 * `-d` - Detached mode, runs the container in the background. Without this, logs would attach to your terminal.<br>
 * `--name node_exporter` - Name as an alternative to container ID. 
 *  `--restart=always` - Tells Podman to restart the container if it crashes or if the host reboots. Only works with systemd integration though. <br>
@@ -98,9 +101,11 @@ Node_exporter will be deployed on all VMs as a Podman-created container. The fol
 * `--pid=host` - The container will share the host process ID namespace. Without this option, the container would only see its own processes, and none of the host processes. <br>
 * `-v /:/host:ro,rslave` - Mounts the host filesystem `/` into the container at `/host`. `ro` means read-only and `rslave` is a mount propagation option, allowing mount events from the host to propagate into the host. If a new filesystem are mounted onto the host, node_exporter will now be able to cleanly spot it. <br>
 * `-p 9100:9100` - Port mapping [host]:[container]. 
-* `--path.rootfs=/host` - Is not a podman option. It's passed directly to node_exporter, stating that the root filesystem is located at `/host` and not `/`. <br>
+* `--path.rootfs=/host` - Is not a podman option. It's passed directly to node exporter, stating that the root filesystem is located at `/host` and not `/`. <br>
 
-Instead of using Podman directly, we'll create a playbook that deploys node_exporter on all hosts with uniform configuration.
+Recommended for Docker (converted to podman): https://github.com/prometheus/node_exporter?tab=readme-ov-file#docker
+
+Instead of using Podman directly, we'll create a playbook that deploys node_exporter on all hosts.
 
 > [PLACEHOLDER]
 > <br>
@@ -118,7 +123,7 @@ Test to see if the containers are running:
 curl http://localhost:9090
 ```
 
-### Firewall configuration
+#### Firewall configuration
 
 The applications we containerize use host-bound ports to relay traffic. These need to be permitted in the firewall before they can travel over the network.
 
@@ -133,7 +138,8 @@ Dest. port: 9100
 Log level: info
 </pre>
 
-Create the corresponding *out* rule in *node-exporter-out*.
+Create the corresponding *out* rule in *node-exporter-out*. For every VM, apply the *node-exporter-out* security group. For the *metrics-01* VM, apply the *node-exporter-in* security group.
+The *metrics-01* VM will run the Promeptheus server, and collect all node exporter data. 
 
 
 ## Deploy Prometheus
@@ -143,7 +149,7 @@ If you want to assign port 9090 to Prometheus, be aware that this port is alread
 sudo ss -tunlp | grep 9090
 ```
 
-We will consider Cockpit an unnecessary feature and potential attack surface. Disable the service and purge it from all hosts:
+We will consider cockpit an unnecessary feature and potential attack surface. Disable the service and purge it from all hosts:
 ```
 sudo systemctl disable cockpit
 sudo dnf remove cockpit-*
@@ -186,8 +192,6 @@ curl http://localhost:9090
 
 ## Deploy Grafana
 
-Run:
-
 ```bash
 podman run -d \
   --name grafana \
@@ -198,7 +202,7 @@ podman run -d \
 
 ## Showcase VM
 
-A new VM will be used to run web-applications from a browser. This is necessary for Grafana, and visualizing our data. We will use a Rocky Linux image that comes with a preinstalled desktop environment. Think of this VM as a client. 
+A new VM will be used to run web-applications from a browser. This is necessary for visualizing our data with Grafana. We will use a Rocky Linux image that comes with a preinstalled desktop environment.
 
 Download the Rocky Linux default image Boot ISO from the [offcial site](https://rockylinux.org/download).
 
@@ -258,17 +262,22 @@ Configure the Proxmox Firewall on this VM so that it mirrors the other VMs.
 
 Start the VM. Configure IP-addresses, gateway and DNS, pick 'workstation' as software, and install. 
 
-## Create a Grafana Dashboard
+## Grafana
 
 Showcase-01 should be able to access all deployed services from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`.
 
 #### Add Prometheus as Data Source
+
 Settings > Data Sources > Add Prometheus
 
 URL:
 ```
 http://<metrics-01>:9090
 ```
+
+### Add a dashboard
+
+There already exists plenty of [ready-made dashboard templates](https://grafana.com/grafana/dashboards/) for Grafana we can use. For Node exporter, we'll use the [Node Exporter Full](https://github.com/rfmoz/grafana-dashboards?tab=readme-ov-file#node-exporter-full) template. Dashboards are written in JSON, so if we'd like, we can edit it on the command-line, or graphically in Grafana. 
 
 ## Conclusion
 Slutsats
