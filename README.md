@@ -123,11 +123,11 @@ Test to see if the containers are running:
 curl http://localhost:9090
 ```
 
-#### Firewall configuration
+#### Node exporter firewall rules
 
 The applications we containerize use host-bound ports to relay traffic. These need to be permitted in the firewall before they can travel over the network.
 
-Add two new Proxmox firewall security-groups, *node-exporter-in* and *node-exporter-out*. Create a new rule for each port that is used. For example:
+Add two new Proxmox firewall security-groups, *node-exporter-in* and *node-exporter-out*. Create a new rule:
 
 <pre>
 Direction: in
@@ -142,14 +142,14 @@ Create the corresponding *out* rule in *node-exporter-out*. For every VM, apply 
 The *metrics-01* VM will run the Promeptheus server, and collect all node exporter data. 
 
 
-## Deploy Prometheus
+### Deploy Prometheus
 
 If you want to assign port 9090 to Prometheus, be aware that this port is already occupied on Rocky Linux by a system-service called *cockpit*:
 ```
 sudo ss -tunlp | grep 9090
 ```
 
-We will consider cockpit an unnecessary feature and potential attack surface. Disable the service and purge it from all hosts:
+We will consider cockpit an unnecessary feature and potential attack surface. Disable the service and remove it from all hosts:
 ```
 sudo systemctl disable cockpit
 sudo dnf remove cockpit-*
@@ -190,7 +190,7 @@ Test that the container is running correctly:
 curl http://localhost:9090
 ```
 
-## Deploy Grafana
+### Deploy Grafana
 
 ```bash
 podman run -d \
@@ -200,7 +200,9 @@ podman run -d \
   docker.io/grafana/grafana
 ```
 
-## Showcase VM
+### Showcase VM
+In the Proxmox Firewall, we will now set up rules for Prometheus and Grafana. Prometheus is simple enough, since we don't need to access it externally. Prometheus only needs to connect with Grafana on the local host, and for this, we need to add a firewall rule. Create a new security-group called *prometheus-in*, 
+### Grafana
 
 A new VM will be used to run web-applications from a browser. This is necessary for visualizing our data with Grafana. We will use a Rocky Linux image that comes with a preinstalled desktop environment.
 
@@ -260,11 +262,48 @@ Network:
 
 Configure the Proxmox Firewall on this VM so that it mirrors the other VMs. 
 
-Start the VM. Configure IP-addresses, gateway and DNS, pick 'workstation' as software, and install. 
+Start the VM. Configure IP-addresses, gateway and DNS, pick 'workstation' as software, and install.
 
-## Grafana
+### Firewall Configuration
 
-Showcase-01 should be able to access all deployed services from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
+In the Proxmox Firewall, we will now set up rules for Prometheus and Grafana. Prometheus is simple enough, since we don't need to access it externally. Prometheus only needs to connect with Grafana on the local host, and for this, we need to add a firewall rule. Create a new security-group called *prometheus-in*:
+
+<pre>
+Direction: in
+Action: ACCEPT
+Enable: yes
+Protocol: tcp
+Dest. port: 9090
+Log level: info
+</pre>
+
+Add this security-group on the *metrics-01* VM.
+
+We want Grafana to be accessable from the *showcase-01* VM, so we'll make security-groups for both inbound and outbound rules:
+
+<pre>
+Direction: in
+Action: ACCEPT
+Enable: yes
+Protocol: tcp
+Dest. port: 3000
+Log level: info
+</pre>
+
+<pre>
+Direction: out
+Action: ACCEPT
+Enable: yes
+Protocol: tcp
+Dest. port: 3000
+Log level: info
+</pre>
+
+Apply the *grafana-in* rule on *metrics-01* and apply the *grafana-out* rule on *showcase-01*. 
+
+### Grafana Web UI
+
+Showcase-01 should be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
 
 #### Add Prometheus as Data Source
 
@@ -275,13 +314,24 @@ URL:
 http://<metrics-01>:9090
 ```
 
-### Add a dashboard
+#### Add a dashboard
 
 There already exists plenty of [ready-made dashboard templates](https://grafana.com/grafana/dashboards/) for Grafana we can use. For Node exporter, we'll use the [Node Exporter Full](https://github.com/rfmoz/grafana-dashboards?tab=readme-ov-file#node-exporter-full) template. Dashboards are written in JSON, so if we'd like, we can edit them on the command-line, or graphically in Grafana. 
 
-## cAdvisor
+<!--
+### cAdvisor
 
 Next on the monitoring stack is cAdvisor (https://github.com/google/cadvisor) which help provide insight into the containers themselves. 
+-->
+
+### Prometheus Podman Exporter
+
+#### Firewall rule for Prometheus Podman exporter
+
+Create 2 new security groups, *podman-exporter-in* and *podman-exportr-out*, add inbound and outbound rules respectively.
+
+On *app-01*, apply the *podman-exporter-in* secuirty-group. On *metrics-01*, apply the *podman-exportr-out* rule. 
+
 
 ## Conclusion
 Slutsats
