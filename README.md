@@ -18,14 +18,13 @@ Kort sammanfattning av dokumentet
   <img src="https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Extra/monitoring-of-virtual-machines.png" width="300" align="left" />
   <h2>Abstract</h2>
   <p> 
-  Monitoring of virtual machines on a server, metrics extraction and visualization 
+  Implementation of monitoring in a virtual environment using Prometheus and Grafana. This includes scraping every host and container for metrics, visualize collected data in a meaningful way, and create alerts that can automatically notify us when certain events occur. 
   <br>
 	<br>
 	<br>
 	<br>
 	<br>
     <br>
-    <strong>Monitoring of Virtual machines</strong> <br>
     <strong>Authors:</strong>
     <i><a href="https://github.com/Filipanderssondev">Filip Andersson</a></i>
     and
@@ -48,48 +47,67 @@ Kort sammanfattning av dokumentet
 7. [Scope and Limitations](#scope-and-limitations)
 8. [Environment](#environment)
 9. [Acknowledgments](#acknowledgments)
-10. [Implementaion](#inplementation)
-11. [Conclusion](#conclusion)  
+10. [Implementaion](#implementation) <br>
+    10.1 [Node Exporter](#node-exporter) <br>
+    10.2 [Prometheus](#prometheus) <br>
+    10.3 [Prometheus Podman Exporter](#prometheus-podman-exporter) <br>
+    10.4 [Grafana](#grafana) <br>
+    10.5 [Showcase VM](#showcase-vm) <br>
+    10.6 [Firewall Configuration](#firewall-configuration) <br>
+    10.7 [Grafana Dashbaords](grafana-dashbaords) <br>
+    10.8 [Grafana Alerts](#grafana-alerts) <br>
+11. [Conclusion](#conclusion)
 12. [References](#references)
+	12.1 [Other projects in our virtual IT-enviroment](#other-projects-in-our-virtual-it-enviroment)
+
 
 ## Introduction
-Inledning
-Bakgrund och syfte. Eventuell översiktbild här.
+**Welcome!** <br>
+In this project, we will build a modern monitoring stack using Prometheus for data collection and Grafana for visual analysis. By combining Prometheus’s data time-series database with Grafana’s dashboards, we gain a centralized view of our environment, and insights into it. With alerts, we can further automate our monitoring. With this project, we hope to demonstrate how monitoring can improve visibility into system performance and availability.
+This is the sixth project <a href="https://github.com/rafaelurrutiasilva/Proxmox_on_Nuc/blob/main/Extra/Mermaid/Projects.md">in a series of projects</a>, with the goal of setting up a complete virtualized, automated, and monitored IT-Enviroment as a part of our internship at [The Swedish Meteorological and Hydrological Institute (SMHI)](https://www.smhi.se/en/about-smhi). <br>
+
+_[Other projects in our virtual IT-enviroment](#other-projects-in-our-virtual-it-enviroment)_
 
 ## Goals and Objectives
-Mål och syften
+The goal is to implement a monitoring solution for an IT environment using Prometheus and Grafana. The project aims to collect system metrics from multiple hosts and containers, store and process the data in Prometheus, visualize it through dashboards in Grafana, and notify users with alerts. 
 
 ## Method
-Hur vi gjorde det. Tillvägagångssätt. Vårt sätt
+Node Exporter and Prometheus Podman Exporter will be deployed on all VMs as a container using podman. Prometheus and Grafana will be deployed on the *metrics-01* VM as containers. Ready-made dashbaords will be imported into Grafana. An alert rule will be created to help monitor the root filesystem usage. A mail server will be created and used as a contact point for alerts. 
 
 ## Target Audience
-Målgrupp
+This project is for anyone who wants to learn about monitoring, and implementing it in a multi-client, multi-user environment. This repo is also part of a larger project aimed at people interested in learning about IT-infrastructure and production, and building such an environment from scratch.
 
 ## Document Status
-I enlighet med ISO 9001 kan det vara _Utkast → Granskad → Godkänd → Publicerad → Arkiverad_
-
-> [!NOTE]  
-> My work here is not finished yet. I need, among other things, to supplement with instructions on how each component should be configured to work together as well supplement with an overview image that explains how the whole thing works.
+This repository is considered complete and officially published.<br>
+Future improvements, refinements, or corrections may be introduced through controlled updates. Any changes will be versioned and documented in the commit history.
 
 
 ## Disclaimer
-Ansvarsfriskrivning. Tex:
 > [!CAUTION]
 > This is intended for learning, testing, and experimentation. The emphasis is not on security or creating an operational environment suitable for production.
 
 ## Scope and Limitations
-Omfattning och begränsningar
+* This guide is not intended for production-grade, multi-node clusters or advanced HA setups.
+* Hardware compatibility varies; If unsure, check hardware requirements before proceeding.
+* Instructions may become outdated as software updates; always verify with the official documentation.
+* Sensetive information will be withheld. This will not hinder participation in the guide.
 
 ## Environment
-Miljö som användes
+ - Asus PN64 ax210NGW
+   - Intel® Core™ i7-12700H 
+   - 1TB disk
+   - 64 GB memory
+ - FreeIPA (4.12.2)
+ - Proxmox VE (9.1.1)
+ - Rocky Linux (10.1)
+ - Ansible (core 2.16.14)
 
 ## Acknowledgments
-Tack och erkännanden. Tex:
-Big thanks to all the people involved in the material I refer to in my links! I would also like to express gratitude to everyone out there, including my colleagues and friends, who are creating things that help and inspire us to continue learning and exploring this never-ending world of computer technology.
+We would like to thank <a href=https://github.com/rafaelurrutiasilva>Rafael Urrutia</a> for his continuous support and guidance.
 
-## Inplementation
+## Implementation
 
-### Deploy Node exporter
+### Node Exporter
 
 Node exporter is [one of many exporters](https://prometheus.io/docs/instrumenting/exporters/) available to Prometheus. It's purpose is to collect hardware information, and Prometheus collects it. 
 
@@ -139,7 +157,7 @@ Create the corresponding *out* rule in *node-exporter-out*. For every VM, apply 
 The *metrics-01* VM will run the Promeptheus server, and collect all node exporter data. 
 
 
-### Deploy Prometheus
+### Prometheus
 
 If you want to assign port 9090 to Prometheus, be aware that this port may already be occupied on Rocky Linux by a system-service called *cockpit*:
 ```
@@ -187,7 +205,25 @@ Test that the container is running correctly:
 curl http://localhost:9090
 ```
 
-### Deploy Grafana
+### Prometheus Podman Exporter
+
+> [PLACEHOLDER]
+> <br>
+> <br>
+> <br>
+> <br>
+> <br>
+> <br>
+> <br>
+> <br>
+
+#### Firewall rule for Prometheus Podman exporter
+
+Create 2 new security groups, *podman-exporter-in* and *podman-exportr-out*, add inbound and outbound rules respectively.
+
+On *app-01*, apply the *podman-exporter-in* secuirty-group. On *metrics-01*, apply the *podman-exportr-out* rule. 
+
+### Grafana
 
 ```bash
 podman run -d \
@@ -296,10 +332,11 @@ Log level: info
 
 Apply the *grafana-in* rule on *metrics-01* and apply the *grafana-out* rule on *showcase-01*. 
 
-### Grafana Web UI
+### Grafana Dashbaords
 
-Showcase-01 should now be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
+*showcase-01* should now be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
 
+<!--
 #### Add Prometheus as Data Source
 
 Settings > Data Sources > Add Prometheus
@@ -307,50 +344,38 @@ Settings > Data Sources > Add Prometheus
 URL:
 ```
 http://<metrics-01>:9090
-```
+```-->
 
 #### Add a dashboard
 
 There already exists plenty of [ready-made dashboard templates](https://grafana.com/grafana/dashboards/) for Grafana we can use. For Node exporter, we'll use the [Node Exporter Full](https://github.com/rfmoz/grafana-dashboards?tab=readme-ov-file#node-exporter-full) template. Dashboards are written in JSON, so if we'd like, we can edit them on the command-line, or graphically in Grafana. 
 
-<!--
-### cAdvisor
 
-Next on the monitoring stack is cAdvisor (https://github.com/google/cadvisor) which help provide insight into the containers themselves. 
--->
-
-### Prometheus Podman Exporter
-
-#### Firewall rule for Prometheus Podman exporter
-
-Create 2 new security groups, *podman-exporter-in* and *podman-exportr-out*, add inbound and outbound rules respectively.
-
-On *app-01*, apply the *podman-exporter-in* secuirty-group. On *metrics-01*, apply the *podman-exportr-out* rule. 
 
 ### Grafana Alerts
 
 A quick look in the Grafana dashboards shows us that several VMs have consumed more storage space than anticipated. We can trace a majority of the disk usage to /var/logs/. Then, we can determine that a lot of logs were generated by an already resolved issue. With automatic log rotation in place, the storage will be cleared up on its own in due time. Forcing log rotation will clear it immediately though. 
 
-This demonstrates how some issues can sneak up on you when you're not paying attention. Grafana alerts is a way of automating responses to monitoring insights. For this project we will keep it simple and create an alert for when the root filesystem usage exceeds 90%. This requires an alert rule, and at least one contact point for that rule. 
+More importantly, this demonstrates how some issues can sneak up on you when you're not paying attention. Grafana alerts is a way of automating responses to monitoring insights. For this project we will keep it simple and create an alert for when the root filesystem usage exceeds 90%. This requires an alert rule, and at least one contact point for that rule. 
 
 #### Create an alert rule
 
+<!-- Alerts are written in PromQL (Prometheus Querying Language), -->
+
 In Grafana, go to Alerting > Alert rules > New alert rule
 
-Give it a name like rootfs-near-full
+Give it a name like *Root FS usage near full*
 
 The alert condition will be a query very similar to the query used on the dashboard. Instead of writing this query from scratch, go to the *full node exporter* dashboard, open the menu for the *Root FS Used* element > Inspect > Query
 
 In the *New alert rule* window, paste the code, and make some adjustments:
 ```
-(
-node_filesystem_size_bytes{mountpoint="/", fstype!= "rootfs"}
+( node_filesystem_size_bytes{mountpoint="/", fstype!= "rootfs"}
 - node_filesystem_avail_bytes{mountpoint="/", fstype!= "rootfs"}
-)
-/ node_filesystem_size_bytes{mountpoint="/", fstype!= "rootfs"}
+/ node_filesystem_size_bytes{mountpoint="/", fstype!= "rootfs"} )
 ```
 
-Here, we do not specify any instances, so the rule applies to all monitored hosts. 
+We want this alert to apply to all hosts, so we do not specify any instances or jobs. 
 
 Next, we'll set a alert condition to *IS ABOVE* with a value of 0.9, which will work as the condition. This query can be tested to see if it's currently firing, which is useful for verifying the query. 
 
@@ -447,4 +472,14 @@ In the Grafana web UI, go to alerting, create a new contact point, or edit the d
 Slutsats
 
 ## References
-Referenser (om det behövs)
+- [FreeIPA](https://www.freeipa.org/)
+- [SMHI](https://www.smhi.se/en/about-smhi)
+- [Ansible FreeIPA collection](https://github.com/freeipa/ansible-freeipa)
+- [Ansible builtin module - Password parameter](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/user_module.html#parameter-password)
+- [FreeIPA Replica Setup](https://www.freeipa.org/page/V4/Replica_Setup)
+
+### Other projects in our virtual IT-enviroment:
+- Project 1 - [Proxmox on Nuc](https://github.com/rafaelurrutiasilva/Proxmox_on_Nuc/)
+- Project 2 - [Rocky Linux golden image for cloning](https://github.com/Filipanderssondev/Rocky_Linux_OS_Base_for_VMs)
+- Project 3 - [Ansible on management VM](https://github.com/JonatanHogild/Ansible_on_management_vm)
+- Project 4 - [Container stack deployment and monitoring with ansible](https://github.com/Filipanderssondev/Container_Stack_Deployment_With_Ansible)
