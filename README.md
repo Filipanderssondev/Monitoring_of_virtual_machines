@@ -57,7 +57,7 @@ Kort sammanfattning av dokumentet
     10.7 [Grafana Dashbaords](grafana-dashbaords) <br>
     10.8 [Grafana Alerts](#grafana-alerts) <br>
 11. [Conclusion](#conclusion)
-12. [References](#references)
+12. [References](#references) <br>
 	12.1 [Other projects in our virtual IT-enviroment](#other-projects-in-our-virtual-it-enviroment)
 
 
@@ -366,7 +366,9 @@ In Grafana, go to Alerting > Alert rules > New alert rule
 
 Give it a name like *Root FS usage near full*
 
-The alert condition will be a query very similar to the query used on the dashboard. Instead of writing this query from scratch, go to the *full node exporter* dashboard, open the menu for the *Root FS Used* element > Inspect > Query
+The alert condition will be a query very similar to the query used on the *full node exporter* dashboard. Go to the dashboard, open the menu for the *Root FS Used* element > Inspect > Query
+
+For someone not entirely familiar with PromQL, this is appreciated, as making variants of existing queries is easier than making one from scratch. 
 
 In the *New alert rule* window, paste the code, and make some adjustments:
 ```
@@ -377,7 +379,7 @@ In the *New alert rule* window, paste the code, and make some adjustments:
 
 We want this alert to apply to all hosts, so we do not specify any instances or jobs. 
 
-Next, we'll set a alert condition to *IS ABOVE* with a value of 0.9, which will work as the condition. This query can be tested to see if it's currently firing, which is useful for verifying the query. 
+Next, we'll set the alert condition as threshold with the *IS ABOVE* option, and a value of 0.9. This query can be tested to see if it's currently firing, which is useful for verifying the query. 
 
 We'll place this in the *infrastructure* folder, where the *node exporter full* dashboard resides. Give it one or more labels, then define evaluation settings.
 
@@ -483,3 +485,4 @@ Slutsats
 - Project 2 - [Rocky Linux golden image for cloning](https://github.com/Filipanderssondev/Rocky_Linux_OS_Base_for_VMs)
 - Project 3 - [Ansible on management VM](https://github.com/JonatanHogild/Ansible_on_management_vm)
 - Project 4 - [Container stack deployment and monitoring with ansible](https://github.com/Filipanderssondev/Container_Stack_Deployment_With_Ansible)
+- Project 5 - [FreeIPA for a virtual environment](https://github.com/JonatanHogild/FreeIPA_for_virtual_environment)
