@@ -89,11 +89,11 @@ Big thanks to all the people involved in the material I refer to in my links! I 
 
 ## Inplementation
 
-### Node exporter
+### Deploy Node exporter
 
 Node exporter is [one of many exporters](https://prometheus.io/docs/instrumenting/exporters/) available to Prometheus. It's purpose is to collect hardware information, and Prometheus collects it. 
 
-Node exporter will be deployed on all VMs as a Podman-created container. The following parameters are used:<br>
+Node exporter will be deployed on all VMs as a Podman-created container. The [following parameters](https://github.com/prometheus/node_exporter?tab=readme-ov-file#docker) are used:<br>
 * `-d` - Detached mode, runs the container in the background. Without this, logs would attach to your terminal.<br>
 * `--name node_exporter` - Name as an alternative to container ID. 
 *  `--restart=always` - Tells Podman to restart the container if it crashes or if the host reboots. Only works with systemd integration though. <br>
@@ -103,9 +103,7 @@ Node exporter will be deployed on all VMs as a Podman-created container. The fol
 * `-p 9100:9100` - Port mapping [host]:[container]. 
 * `--path.rootfs=/host` - Is not a podman option. It's passed directly to node exporter, stating that the root filesystem is located at `/host` and not `/`. <br>
 
-Recommended for Docker (converted to podman): https://github.com/prometheus/node_exporter?tab=readme-ov-file#docker
-
-Instead of using Podman directly, we'll create a playbook that deploys node_exporter on all hosts.
+Though, instead of using Podman directly, we'll create a playbook that deploys node_exporter on all hosts.
 
 > [PLACEHOLDER]
 > <br>
@@ -116,7 +114,6 @@ Instead of using Podman directly, we'll create a playbook that deploys node_expo
 > <br>
 > <br>
 > <br>
-
 
 Test to see if the containers are running:
 ```
@@ -144,7 +141,7 @@ The *metrics-01* VM will run the Promeptheus server, and collect all node export
 
 ### Deploy Prometheus
 
-If you want to assign port 9090 to Prometheus, be aware that this port is already occupied on Rocky Linux by a system-service called *cockpit*:
+If you want to assign port 9090 to Prometheus, be aware that this port may already be occupied on Rocky Linux by a system-service called *cockpit*:
 ```
 sudo ss -tunlp | grep 9090
 ```
@@ -156,7 +153,7 @@ sudo dnf remove cockpit-*
 ```
 
 Create directory:
-```bash
+```
 mkdir -p /opt/prometheus
 ```
 
@@ -201,8 +198,6 @@ podman run -d \
 ```
 
 ### Showcase VM
-In the Proxmox Firewall, we will now set up rules for Prometheus and Grafana. Prometheus is simple enough, since we don't need to access it externally. Prometheus only needs to connect with Grafana on the local host, and for this, we need to add a firewall rule. Create a new security-group called *prometheus-in*, 
-### Grafana
 
 A new VM will be used to run web-applications from a browser. This is necessary for visualizing our data with Grafana. We will use a Rocky Linux image that comes with a preinstalled desktop environment.
 
@@ -303,7 +298,7 @@ Apply the *grafana-in* rule on *metrics-01* and apply the *grafana-out* rule on 
 
 ### Grafana Web UI
 
-Showcase-01 should be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
+Showcase-01 should now be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
 
 #### Add Prometheus as Data Source
 
@@ -361,11 +356,13 @@ Next, we'll set a alert condition to *IS ABOVE* with a value of 0.9, which will 
 
 We'll place this in the *infrastructure* folder, where the *node exporter full* dashboard resides. Give it one or more labels, then define evaluation settings.
 
-As for the notification configuration, we don't have any working contact points. Leave it as the default option, and create the alert rule. This will be edited later.
+As for the notification configuration, we don't have any working contact points. Leave it as is, and create the alert rule. This will be edited later.
 
 #### Create a mail server
 
-To receive emails we will need a mail server. Designate one of the VMs as a mail server and download postfix (https://www.postfix.org/):
+Grafana offers a variety of contact points. Nowadays, enterprises favor solutions such as incident management systems or team communcation platforms. We'll go with something simple, email.
+
+To receive emails we will need a mail server. We'll designate *mgmt-01* as a mail server and download postfix (https://www.postfix.org/):
 ```
 sudo dnf install postfix
 sudo systemctl start postfix
@@ -408,7 +405,7 @@ On server:
 cat /var/spool/mail/jonatan
 ```
 
-The mail-addresses were actually made in the previous lab, when we created our FreeIPA-users. By default, the username and domain name gets combined into a mail-address when a user is made. 
+The mail-addresses were actually made in the previous lab, when we created our FreeIPA-users. By default, the username and domain name gets combined into a mail-address when a user is made. We don't necessarily have to use these, but it's convinient. 
 
 #### Update Grafana configuration to use email as a contact point
 
@@ -444,8 +441,7 @@ In the Grafana web UI, go to alerting, create a new contact point, or edit the d
 
 > This is a crude mail system and not the most ideal way of recieving alerts. We wanted to create a functioning alert pipeline, first and foremost.
 > Postfix works mainly as a Mail Transmission Agent (MTA), and is a good choice as a delivery backbone.
-> We could further improve on this by implementing Dovecot as a dedicated mail server, with email clients like thunderbird and alpine.
-> Nowadays, enterprises favor solutions such as incident management systems over email. 
+> We could further improve on this by implementing Dovecot as a dedicated mail server, with email clients like thunderbird.
 
 ## Conclusion
 Slutsats
