@@ -56,6 +56,7 @@ Kort sammanfattning av dokumentet
     10.6 [Firewall Configuration](#firewall-configuration) <br>
     10.7 [Grafana Dashbaords](grafana-dashbaords) <br>
     10.8 [Grafana Alerts](#grafana-alerts) <br>
+ 	10.9 [FreeIPA integration with Grafana](#freeipa-integration-with-grafana) <br>
 11. [Conclusion](#conclusion)
 12. [References](#references) <br>
 	12.1 [Other projects in our virtual IT-enviroment](#other-projects-in-our-virtual-it-enviroment)
@@ -571,6 +572,7 @@ Slutsats
 - [Ansible FreeIPA collection](https://github.com/freeipa/ansible-freeipa)
 - [Ansible builtin module - Password parameter](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/user_module.html#parameter-password)
 - [FreeIPA Replica Setup](https://www.freeipa.org/page/V4/Replica_Setup)
+- [Grafana roles and permissions](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#organization-roles)
 
 ### Other projects in our virtual IT-enviroment:
 - Project 1 - [Proxmox on Nuc](https://github.com/rafaelurrutiasilva/Proxmox_on_Nuc/)
