@@ -466,9 +466,101 @@ Redeploy Grafana, then run it again.
 
 In the Grafana web UI, go to alerting, create a new contact point, or edit the default email one. Set mail addresses, and then test the contact point. Edit the alert rule and add the new contact point. 
 
-> This is a crude mail system and not the most ideal way of recieving alerts. We wanted to create a functioning alert pipeline, first and foremost.
+> This is a crude mail system and not the most ideal way of recieving alerts.
 > Postfix works mainly as a Mail Transmission Agent (MTA), and is a good choice as a delivery backbone.
 > We could further improve on this by implementing Dovecot as a dedicated mail server, with email clients like thunderbird.
+
+### FreeIPA integration with Grafana
+
+Instead of using the default admin login in Grafana, we want to use our FreeIPA-users. Grafana has LDAP-support, which means, by extension, it has FreeIPA-support. We can specify which user-groups have what levels of access in Grafana as well. In Grafana, there are [three types of user-accounts](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#organization-roles): administrators, editors and viewers. Following our current set of user-groups, sysadmins will be mapped to the admin role, the editor role will be skipped and regular users will be mapped to the viewer role. 
+
+
+#### Create a Dedicated Bind User in FreeIPA
+
+Grafana needs a read-only service account to query the LDAP directory.
+
+On any VM:
+```bash
+kinit admin
+ipa user-add grafana-bind --first=Grafana --last=Bind --password
+```
+
+#### Enable LDAP in Grafana
+
+Go into the *grafana.ini* file on the host. 
+
+Find the [auth.ldap] section and make these changes:
+```ini
+[auth.ldap]
+enabled = true
+port = 636
+use_ssl = true
+ssl_skip_verify = true
+config_file = /etc/grafana/ldap.toml
+allow_sign_up = true
+```
+
+#### LDAP configuration for Grafana
+
+As with the grafana.ini file before, copy the *ldap.toml* file from the container to the host:
+```
+podman cp grafana:/etc/grafana/ldap.toml ./ldap.toml
+```
+
+For convenience, place ldap.toml in the same directory as grafana.ini, since it will also be mounted to /etc/grafana.
+
+Make the following adjustments:
+```
+[[servers]]
+host = "your-ipa-server.domain.com"
+port = 636
+use_ssl = true
+ssl_skip_verify = false
+root_ca_cert = /etc/ipa/ca.crt
+
+# Search user bind dn
+bind_dn = "uid=svc-grafana-bind,cn=users,cn=accounts,dc=domain,dc=com"
+bind_password = 'grafana-bind-password'
+
+# User search filter, for example "(cn=%s)" or "(sAMAccountName=%s)" or "(uid=%s)"
+search_filter = "(uid=%s)"
+
+# An array of base dns to search through
+search_base_dns = ["cn=users,cn=accounts,dc=test,dc=loc"]
+
+## An array of the base DNs to search through for groups. Typically uses ou=groups
+group_search_base_dns = ["cn=groups,cn=accounts,dc=test,dc=loc"]
+
+# Specify names of the ldap attributes your ldap uses
+[servers.attributes]
+name = "givenName"
+surname = "sn"
+username = "uid"
+member_of = "memberOf"
+email =  "mail"
+
+[[servers.group_mappings]]
+group_dn = "cn=sysadmins,cn=groups,cn=accounts,dc=plab,dc=internal"
+org_role = "Admin"
+
+[[servers.group_mappings]]
+# If you want to match all (or no ldap groups) then you can use wildcard
+group_dn = "*"
+org_role = "Viewer"
+```
+
+#### Edit the deploy_grafana.yml playbook
+
+Go into the deploy_grafana.yaml file.
+
+Add a volume mount bind for */etc/ipa*:
+```yaml
+volumes:
+  - "/etc/ipa/ca.crt:/etc/ipa/ca.crt:Z"
+```
+
+Stop and remove the current Grafana container, then redeploy using the playbook. 
+
 
 ## Conclusion
 Slutsats
