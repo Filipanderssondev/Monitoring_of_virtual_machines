@@ -1,0 +1,15 @@
+---
+- name: Kill Grafana
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Stop and remove Grafana
+      ansible.builtin.shell: |
+        podman stop grafana 2>/dev/null || true
+        podman rm grafana 2>/dev/null || true
+        echo "Done"
+      register: result
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: "{{ result.stdout }}"

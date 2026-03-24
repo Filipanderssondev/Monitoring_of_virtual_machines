@@ -1,0 +1,27 @@
+---
+- name: Deploy application
+  hosts: application
+  become: true
+  roles:
+    - role: containers/login/filip
+
+  tasks:
+    - name: Run frontend
+      include_role:
+        name: containers/run
+      vars:
+        container_network: app_network
+        container_name: nginx_frontend
+        image_name: nginx
+        tag: 1.29.4
+        container_ports:
+          - "8081:80"
+        container_volumes:
+          - "/home/Filip/app_projects/app-praktik-projekt/frontend:/usr/share/nginx/html:Z"
+        container_cmd:
+          - "sh"
+          - "-c"
+          - "chown -R 0:0 /usr/share/nginx/html && nginx -g 'daemon off;'"
+        container_env_vars: {}
+        container_state: started
+        container_restart_policy: always

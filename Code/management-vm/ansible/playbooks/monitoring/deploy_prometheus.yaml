@@ -1,0 +1,34 @@
+# Prometheus
+- name: Deploy Prometheus
+  hosts: monitoring
+  become: true
+  roles:
+    - role: containers/login/filip
+  tasks:
+    - name: Ensure Prometheus config directory exists
+      ansible.builtin.file:
+        path: /home/Filip/prometheus
+        state: directory
+        mode: "0755"
+
+    - name: Deploy Prometheus config
+      ansible.builtin.copy:
+        src: /opt/ansible/files/prometheus/prometheus.yml
+        dest: /home/Filip/prometheus/prometheus.yml
+        mode: "0644"
+
+    - name: Run prometheus container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: prometheus
+        manufacturer: prom
+        image_name: prometheus
+        tag: main
+        container_ports:
+          - "9090:9090"
+        container_volumes:
+          - "/home/Filip/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z"
+        container_state: started
+        container_restart_policy: always
+        container_network: host

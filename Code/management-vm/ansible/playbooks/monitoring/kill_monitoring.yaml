@@ -1,0 +1,30 @@
+---
+- name: Kill all monitoring Containers
+  hosts: monitoring
+  become: true
+  tasks:
+
+  #roles:
+  #  - role: containers/kill
+- name: Get all container names
+  command: podman ps -a --format "{{'{{'}}.Names{{'}}'}}"
+  register: container_names
+  changed_when: false
+
+- name: Show container names
+  debug:
+    msg: "Container found: {{ item }}"
+  loop: "{{ container_names.stdout_lines }}"
+  when: container_names.stdout != ""
+
+- name: Stop all containers
+  command: podman stop {{ item }}
+  loop: "{{ container_names.stdout_lines }}"
+  ignore_errors: true
+  when: container_names.stdout != ""
+
+- name: Remove all containers
+  command: podman rm -f {{ item }}
+  loop: "{{ container_names.stdout_lines }}"
+  ignore_errors: true
+  when: container_names.stdout != ""

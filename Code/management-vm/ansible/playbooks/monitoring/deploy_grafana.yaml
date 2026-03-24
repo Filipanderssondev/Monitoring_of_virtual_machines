@@ -1,0 +1,74 @@
+---
+- name: Deploy Grafana
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Create Grafana provisioning directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        recurse: true
+        mode: "0755"
+      loop:
+        - /home/Filip/grafana/provisioning/datasources
+        - /home/Filip/grafana/provisioning/dashboards/infrastructure
+        - /home/Filip/grafana/provisioning/dashboards/applications
+
+    - name: Deploy Grafana datasource
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/datasources/datasource.yml
+        dest: /home/Filip/grafana/provisioning/datasources/datasource.yml
+        mode: "0644"
+
+    - name: Deploy dashboards provisioning config
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/dashboards/dashboards.yml
+        dest: /home/Filip/grafana/provisioning/dashboards/dashboards.yml
+        mode: "0644"
+
+    - name: Deploy infrastructure dashboard
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/dashboards/infrastructure/vm-infrastructure-overview.json
+        dest: /home/Filip/grafana/provisioning/dashboards/infrastructure/vm-infrastructure-overview.json
+        mode: "0644"
+
+    - name: Deploy applications dashboard
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/dashboards/applications/container-health.json
+        dest: /home/Filip/grafana/provisioning/dashboards/applications/container-health.json
+        mode: "0644"
+
+    - name: Create Grafana alerting provisioning directory
+      ansible.builtin.file:
+        path: /home/Filip/grafana/provisioning/alerting
+        state: directory
+        mode: "0755"
+
+    - name: Deploy Grafana alerting config
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/alerting/alerting.yml
+        dest: /home/Filip/grafana/provisioning/alerting/alerting.yml
+        mode: "0644"
+
+    - name: Deploy alert rules
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/alerting/alert-rules.yml
+        dest: /home/Filip/grafana/provisioning/alerting/alert-rules.yml
+        mode: "0644"
+
+    - name: Run Grafana container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: grafana
+        image_name: grafana
+        tag: "alpine-3.22.2"
+        container_ports:
+          - "3000:3000"
+        container_volumes:
+          - "/home/Filip/grafana/provisioning:/etc/grafana/provisioning:Z"
+          - "/home/jonatan/grafana:/etc/grafana:Z"
+          - "/etc/ipa:/etc/ipa:Z"
+        container_state: started
+        container_restart_policy: always
+        container_network: host

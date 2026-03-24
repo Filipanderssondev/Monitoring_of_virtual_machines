@@ -1,0 +1,8 @@
+---
+- name: Kill Containers
+  hosts: application
+  become: true
+  tasks:
+
+  roles:
+    - role: containers/kill

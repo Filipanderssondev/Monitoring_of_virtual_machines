@@ -1,0 +1,19 @@
+---
+- name: Remove Node Exporter on all VMs
+  hosts: all
+  become: true
+  tasks:
+    - name: Stop and remove Node Exporter container
+      containers.podman.podman_container:
+        name: node_exporter
+        state: absent
+
+    - name: Verify Node Exporter is gone
+      ansible.builtin.command:
+        cmd: podman ps -a --filter name=node_exporter --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: result
+      changed_when: false
+
+    - name: Print verification
+      ansible.builtin.debug:
+        msg: "{{ 'Node Exporter is gone' if result.stdout == '' else 'Node Exporter still exists!' }}"

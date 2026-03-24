@@ -1,0 +1,19 @@
+---
+- name: Remove Frontend on all VMs
+  hosts: application
+  become: true
+  tasks:
+    - name: Stop and remove Frontend container
+      containers.podman.podman_container:
+        name: frontend
+        state: absent
+
+    - name: Verify Frontend is gone
+      ansible.builtin.command:
+        cmd: podman ps -a --filter name=nginx_frontend --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: result
+      changed_when: false
+
+    - name: Print verification
+      ansible.builtin.debug:
+        msg: "{{ 'Frontend is gone' if result.stdout == '' else 'Frontend still exists!' }}"

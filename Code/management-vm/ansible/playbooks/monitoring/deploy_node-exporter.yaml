@@ -1,0 +1,41 @@
+---
+- name: Verify Node Exporter on all VMs
+  hosts: all
+  roles:
+    - role: containers/install
+    - role: containers/login/filip
+  become: true
+  tasks:
+    - name: Pull Node Exporter image
+      include_role:
+        name: containers/images/pull
+      vars:
+        images_to_pull:
+          - manufacturer: prom
+            image_name: node-exporter
+            tag: latest
+
+    - name: Enable podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        state: started
+        enabled: true
+
+    - name: Run Node Exporter container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: node_exporter
+        manufacturer: prom
+        image_name: node-exporter
+        tag: latest
+        container_ports:
+          - "9100:9100"
+        pid: host
+        container_network: host
+        container_state: started
+        container_restart_policy: always
+        container_volumes:
+          - /:/host:ro,rslave
+        container_cmd:
+          - "--path.rootfs=/host"

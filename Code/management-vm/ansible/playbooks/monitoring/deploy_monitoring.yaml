@@ -1,0 +1,155 @@
+---
+- name: Verify Node Exporter on all VMs
+  hosts: all
+  roles:
+    - role: containers/install
+    - role: containers/login/filip
+  become: true
+  tasks:
+    - name: Pull Node Exporter image
+      include_role:
+        name: containers/images/pull
+      vars:
+        images_to_pull:
+          - manufacturer: prom
+            image_name: node-exporter
+            tag: latest
+
+    - name: Enable podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        state: started
+        enabled: true
+
+# Copy SSL/TLS Certificate to application VM
+    - name: Copy certs to app VM
+      copy:
+        src: /opt/ansible/files/certificates/app-01-certs
+        dest: /home/Filip/certs
+
+
+    - name: Run Node Exporter container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: node_exporter
+        manufacturer: prom
+        image_name: node-exporter
+        tag: latest
+        container_ports:
+          - "9100:9100"
+        pid: host
+        container_network: host
+        container_state: started
+        container_restart_policy: always
+        container_volumes:
+          - /:/host:ro,rslave
+        container_cmd:
+          - "--path.rootfs=/host"
+        container_security_opt: "{{ ['label=disable'] if inventory_hostname in groups['ipaserver'] else omit }}"
+
+- name: Deploy Podman Exporter on Application VM
+  hosts: application
+  become: true
+
+  roles:
+    - role: containers/login/filip
+  tasks:
+    - name: Pull Podman Exporter image
+      include_role:
+        name: containers/images/pull
+      vars:
+        images_to_pull:
+          - image_name: prometheus-podman-exporter
+            tag: patched
+
+    - name: Enable podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        state: started
+        enabled: true
+
+    - name: Run Podman Exporter container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: podman_exporter
+        image_name: prometheus-podman-exporter
+        tag: patched
+        container_state: started
+        container_ports:
+          - "9882:9882"
+        container_network: host
+        container_volumes:
+          - "/run/podman/podman.sock:/run/podman/podman.sock:ro"
+        container_env_vars:
+          CONTAINER_HOST: "unix:///run/podman/podman.sock"
+        container_user: root
+        container_restart_policy: always
+
+# Prometheus
+- name: Deploy Prometheus
+  hosts: monitoring
+  become: true
+  roles:
+    - role: containers/login/filip
+  tasks:
+    - name: Ensure Prometheus config directory exists
+      ansible.builtin.file:
+        path: /home/Filip/prometheus
+        state: directory
+        mode: "0755"
+
+    - name: Deploy Prometheus config
+      ansible.builtin.copy:
+        src: files/prometheus/prometheus.yml
+        dest: /home/Filip/prometheus/prometheus.yml
+        mode: "0644"
+
+    - name: Run prometheus container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: prometheus
+        manufacturer: prom
+        image_name: prometheus
+        tag: main
+        container_ports:
+          - "9090:9090"
+        container_volumes:
+          - "/home/Filip/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z"
+        container_state: started
+        container_restart_policy: always
+        container_network: host
+
+- name: Deploy Grafana
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Create Grafana provisioning directory
+      ansible.builtin.file:
+        path: /home/Filip/grafana/provisioning/datasources
+        state: directory
+        recurse: true
+        mode: "0755"
+
+    - name: Configure Grafana datasource
+      ansible.builtin.copy:
+        src: files/grafana/provisioning/datasources/datasource.yml
+        dest: /home/Filip/grafana/provisioning/datasources/datasource.yml
+        mode: "0644"
+
+    - name: Run Grafana container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: grafana
+        image_name: grafana
+        tag: "alpine-3.22.2"
+        container_ports:
+          - "3000:3000"
+        container_volumes:
+          - "/home/Filip/grafana/provisioning:/etc/grafana/provisioning:Z"
+        container_state: started
+        container_restart_policy: always
+        container_network: host

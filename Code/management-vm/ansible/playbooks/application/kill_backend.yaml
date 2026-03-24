@@ -1,0 +1,19 @@
+---
+- name: Remove Backend on all VMs
+  hosts: application
+  become: true
+  tasks:
+    - name: Stop and remove Backend container
+      containers.podman.podman_container:
+        name: rocky_flask_backend_api
+        state: absent
+
+    - name: Verify Backend is gone
+      ansible.builtin.command:
+        cmd: podman ps -a --filter name=rocky_flask_backend_api --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: result
+      changed_when: false
+
+    - name: Print verification
+      ansible.builtin.debug:
+        msg: "{{ 'Backend is gone' if result.stdout == '' else 'Backend still exists!' }}"
