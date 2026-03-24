@@ -1,0 +1,11 @@
+---
+- name: Run a container
+  containers.podman.podman_container:
+    name: "{{ container_name }}"
+    image: "{{ registry }}/{{ project }}/{{ image_name }}:{{ tag }}"
+    state: "{{ container_state  }}"
+    ports: "{{ container_ports | default(omit)  }}"
+    env: "{{ container_env_vars  }}"
+    volumes: "{{ container_volumes | default(omit) }}"
+    restart_policy: "{{ container_restart_policy | default('always') }}"
+    command: "{{ container_cmd | default([]) }}"

@@ -1,0 +1,21 @@
+---
+#Default value for variables, whats the image to run + name of new container
+
+# Default container registry
+registry: "www.private-registry"
+project: "myrepository"
+tag: "latest"
+image_name: my-image
+container_name: my-container
+
+#Desired container state / absent
+container_state: started
+
+#Additional settings for later
+container_ports: [] #What port/ports to run the container at
+container_env_vars: {} #Enviroment variables
+container_volumes: [] # List of "host path:container path"
+container_restart_policy: always
+container_cmd: []
+
+

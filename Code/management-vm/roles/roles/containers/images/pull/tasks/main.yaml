@@ -1,0 +1,16 @@
+---
+- name: Pull container images
+  containers.podman.podman_image:
+    name: >-
+      {{
+        default_registry
+        ~ '/'
+        ~ (item.get('manufacturer', '') ~ '/' if item.get('manufacturer', '') != '' else '')
+        ~ item.image_name
+        ~ ':'
+        ~ (item.get('tag', default_tag))
+      }}
+    state: present
+    tlsverify: "{{ tlsverify }}"
+  loop: "{{ images_to_pull }}"
+

@@ -1,0 +1,11 @@
+---
+#Default image registry
+registry_url: "www.private-container-registry.com/myrepository"  # Dummy value for demostration purpose
+tlsverify: tls-verify=false
+
+# As the registry URL isnt as sensitive information as my                                   
+# user credentials, its considered best practice to have it  
+# in my defaults main and not our encrypted vault file
+
+# PS: Out of necesity i need to have the tls verify false, 
+#i had many issues with certificate suthentivation on the vms so it is easier to do it like this so it dosent fail

@@ -1,0 +1,12 @@
+---
+- name: Installation of tools
+  ansible.builtin.dnf:
+    name:
+      - podman
+    state: present
+  become: true
+
+- name: Verify podman version
+  ansible.builtin.command: podman --version
+  
+  #Basic install/Verification role to run in a playbook to ensure all the vms are up to date with the necisarry tools

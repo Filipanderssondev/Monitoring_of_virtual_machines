@@ -1,0 +1,12 @@
+---
+default_registry: "private-registry.com/repository"
+
+#image basics:
+default_image: "myimage"
+default_tag: "latest"
+tlsverify: false
+
+#manufacturer if needed like prom/prometheus:latest
+manufacturer: "mymanufacturer"
+
+#Default values variables for the pull/tasks/main.yaml mechanics

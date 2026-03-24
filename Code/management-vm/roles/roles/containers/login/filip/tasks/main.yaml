@@ -1,0 +1,10 @@
+- name: Login to private-registry
+  containers.podman.podman_login:
+    registry: "{{ registry_url }}"
+    username: "{{ registry_username }}"
+    password: "{{ registry_password }}"
+    tlsverify: false
+
+#Login Mechanics
+#Referring to my credentials in my encrypted vault file 
+#following best practice methods

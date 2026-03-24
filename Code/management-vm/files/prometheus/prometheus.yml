@@ -1,0 +1,67 @@
+global:
+  scrape_interval: 15s
+
+# VM Scrape config
+
+scrape_configs:
+  - job_name: "Management VM"
+    static_configs:
+      - targets:
+          - "10.208.12.100:9100"
+        labels:
+          role: "Management"
+
+  - job_name: "Application VM"
+    static_configs:
+      - targets:
+          - "10.208.12.103:9100"
+        labels:
+          role: "Application"
+
+  - job_name: "Monitoring VM"
+    static_configs:
+      - targets:
+          - "10.208.12.102:9100"
+        labels:
+          role: "Monitoring/Metrics"
+
+  - job_name: "IAM VM"
+    static_configs:
+      - targets:
+          - "10.208.12.105:9100"
+        labels:
+          role: "IAM (FreeIPA)"
+
+  - job_name: "Showcase VM"
+    static_configs:
+      - targets:
+          - "10.208.12.104:9100"
+        labels:
+          role: "Showcase"
+
+# Podman exporter, exporting metrics from containers on each vm
+
+  - job_name: "Management Containers"
+    static_configs:
+      - targets: ["10.208.12.100:9882"]
+        labels: {role: "Management"}
+
+  - job_name: "Application Containers"
+    static_configs:
+      - targets: ["10.208.12.103:9882"]
+        labels: {role: "Application"}
+
+  - job_name: "Monitoring Containers"
+    static_configs:
+      - targets: ["10.208.12.102:9882"]
+        labels: {role: "Monitoring"}
+
+  - job_name: "IAM containers"
+    static_configs:
+      - targets: ["10.208.12.105:9882"]
+        labels: {role: "IAM"}
+
+  - job_name: "Showcase Containers"
+    static_configs:
+      - targets: ["10.208.12.104:9882"]
+        labels: {role: "Showcase"}
