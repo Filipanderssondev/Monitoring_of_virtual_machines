@@ -73,15 +73,14 @@ _[Other projects in our virtual IT-enviroment](#other-projects-in-our-virtual-it
 The goal is to implement a monitoring solution for an IT environment using Prometheus and Grafana. The project aims to collect system metrics from multiple hosts and containers, store and process the data in Prometheus, visualize it through dashboards in Grafana, and notify users with alerts. 
 
 ## Method
-Node Exporter and Prometheus Podman Exporter will be deployed on all VMs as a container using podman. Prometheus and Grafana will be deployed on the *metrics-01* VM as containers. Ready-made dashbaords will be imported into Grafana. An alert rule will be created to help monitor the root filesystem usage. A mail server will be created and used as a contact point for alerts. 
+Node Exporter and Prometheus Podman Exporter will be deployed on all VMs as containers using podman. Prometheus and Grafana will be deployed on the *metrics-01* VM as containers. Node exporter will monitor every virtual machine. Podman exporter will monitor every container running on that virtual machine. Prometheus scrape targets configurations along with ready-made dashbaords will be integrated and deployed together with grafana provisioning configurations as well as rootCA certificate automation. An alert rule will be created to help monitor the root filesystem usage on all VMs. A mail server will be created and used as a contact point for alerts. FreeIPA login will be integrated with Grafana.  
 
 ## Target Audience
-This project is for anyone who wants to learn about monitoring, and implementing it in a multi-client, multi-user environment. This repo is also part of a larger project aimed at people interested in learning about IT-infrastructure and production, and building such an environment from scratch.
+This project is for anyone who wants to learn about monitoring and automation, and implementing it in a multi-client, multi-user environment. This repo is also part of a larger project aimed at people interested in learning about IT-infrastructure and production, and building such an environment from scratch.
 
 ## Document Status
 This repository is considered complete and officially published.<br>
 Future improvements, refinements, or corrections may be introduced through controlled updates. Any changes will be versioned and documented in the commit history.
-
 
 ## Disclaimer
 > [!CAUTION]
@@ -102,6 +101,11 @@ Future improvements, refinements, or corrections may be introduced through contr
  - Proxmox VE (9.1.1)
  - Rocky Linux (10.1)
  - Ansible (core 2.16.14)
+ - Node_exporter (1.9.1)
+ - Prometheus Podman exporter (v.1.21.1)
+ - Prometheus (3.9.1)
+ - Grafana (12.3.1)
+ - PostFix (3.11.0)
 
 ## Acknowledgments
 We would like to thank <a href=https://github.com/rafaelurrutiasilva>Rafael Urrutia</a> for his continuous support and guidance.
@@ -110,7 +114,7 @@ We would like to thank <a href=https://github.com/rafaelurrutiasilva>Rafael Urru
 
 ### Node Exporter
 
-Node exporter is [one of many exporters](https://prometheus.io/docs/instrumenting/exporters/) available to Prometheus. It's purpose is to collect hardware information, and Prometheus collects it. 
+Node exporter is [one of many exporters](https://prometheus.io/docs/instrumenting/exporters/) available to Prometheus. Its purpose is to collect hardware information, and Prometheus collects it. 
 
 Node exporter will be deployed on all VMs as a Podman-created container. The [following parameters](https://github.com/prometheus/node_exporter?tab=readme-ov-file#docker) are used:<br>
 * `-d` - Detached mode, runs the container in the background. Without this, logs would attach to your terminal.<br>
@@ -171,35 +175,7 @@ sudo systemctl disable cockpit
 sudo dnf remove cockpit-*
 ```
 
-Create directory:
-```
-mkdir -p /opt/prometheus
-```
 
-Create `/opt/prometheus/prometheus.yml`:
-
-```yaml
-global:
-  scrape_interval: 15s
-scrape_configs:
-  - job_name: "node_exporter"
-    static_configs:
-          - targets: ["10.208.12.100:9100"]
-          - targets: ["10.208.12.102:9100"]
-          - targets: ["10.208.12.103:9100"]
-          - targets: ["10.208.12.104:9100"]
-          - targets: ["10.208.12.105:9100"]
-```
-
-Prometheus run command:
-```bash
-podman run -d \
-  --name prometheus \
-  --restart=always \
-  -p 9090:9090 \
-  -v /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
-  r-harbor.smhi.se/praktik-labb/prom/prometheus
-```
 
 Test that the container is running correctly:
 ```
