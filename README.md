@@ -388,13 +388,121 @@ Create 2 new security groups, *podman-exporter-in* and *podman-exportr-out*, add
 
 On *app-01*, apply the *podman-exporter-in* secuirty-group. On *metrics-01*, apply the *podman-exportr-out* rule. 
 
+<br>
+<br>
 
 ### Prometheus
 
 #### Scrape configs
 Since both node exporter and podman exporter is deployed where they should be, we have to configure a prometheus.yml, configurations to be deployed together with the prometheus container and map it into the prometheus container. 
 
+##### prometheus.yml
+~~~yaml
+global:
+  scrape_interval: 15s
 
+# VM Scrape config
+
+scrape_configs:
+  - job_name: "Management VM"
+    static_configs:
+      - targets:
+          - "10.208.12.100:9100"
+        labels:
+          role: "Management"
+
+  - job_name: "Application VM"
+    static_configs:
+      - targets:
+          - "10.208.12.103:9100"
+        labels:
+          role: "Application"
+
+  - job_name: "Monitoring VM"
+    static_configs:
+      - targets:
+          - "10.208.12.102:9100"
+        labels:
+          role: "Monitoring/Metrics"
+
+  - job_name: "IAM VM"
+    static_configs:
+      - targets:
+          - "10.208.12.105:9100"
+        labels:
+          role: "IAM (FreeIPA)"
+
+  - job_name: "Showcase VM"
+    static_configs:
+      - targets:
+          - "10.208.12.104:9100"
+        labels:
+          role: "Showcase"
+
+# Podman exporter, exporting metrics from containers on each vm
+
+  - job_name: "Management Containers"
+    static_configs:
+      - targets: ["10.208.12.100:9882"]
+        labels: {role: "Management"}
+
+  - job_name: "Application Containers"
+    static_configs:
+      - targets: ["10.208.12.103:9882"]
+        labels: {role: "Application"}
+
+  - job_name: "Monitoring Containers"
+    static_configs:
+      - targets: ["10.208.12.102:9882"]
+        labels: {role: "Monitoring"}
+
+  - job_name: "IAM containers"
+    static_configs:
+      - targets: ["10.208.12.105:9882"]
+        labels: {role: "IAM"}
+
+  - job_name: "Showcase Containers"
+    static_configs:
+      - targets: ["10.208.12.104:9882"]
+        labels: {role: "Showcase"}
+~~~
+
+#### deploy_prometheus.yaml
+~~~yaml
+- name: Deploy Prometheus
+  hosts: monitoring
+  become: true
+  roles:
+    - role: containers/login/filip
+  tasks:
+    - name: Ensure Prometheus config directory exists
+      ansible.builtin.file:
+        path: /home/Filip/prometheus
+        state: directory
+        mode: "0755"
+
+    - name: Deploy Prometheus config
+      ansible.builtin.copy:
+        src: /opt/ansible/files/prometheus/prometheus.yml
+        dest: /home/Filip/prometheus/prometheus.yml
+        mode: "0644"
+
+    - name: Run prometheus container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: prometheus
+        manufacturer: prom
+        image_name: prometheus
+        tag: main
+        container_ports:
+          - "9090:9090"
+        container_volumes:
+          - "/home/Filip/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z"
+        container_state: started
+        container_restart_policy: always
+        container_network: host
+~~~
 
 If you want to assign port 9090 to Prometheus, be aware that this port may already be occupied on Rocky Linux by a system-service called *cockpit*:
 ```
@@ -414,8 +522,156 @@ Test that the container is running correctly:
 curl http://localhost:9090
 ```
 
+#### kill_monitoring.yaml
+~~~yaml
+---
+- name: Kill all monitoring Containers
+  hosts: monitoring
+  become: true
+  tasks:
+
+  #roles:
+  #  - role: containers/kill
+- name: Get all container names
+  command: podman ps -a --format "{{'{{'}}.Names{{'}}'}}"
+  register: container_names
+  changed_when: false
+
+- name: Show container names
+  debug:
+    msg: "Container found: {{ item }}"
+  loop: "{{ container_names.stdout_lines }}"
+  when: container_names.stdout != ""
+
+- name: Stop all containers
+  command: podman stop {{ item }}
+  loop: "{{ container_names.stdout_lines }}"
+  ignore_errors: true
+  when: container_names.stdout != ""
+
+- name: Remove all containers
+  command: podman rm -f {{ item }}
+  loop: "{{ container_names.stdout_lines }}"
+  ignore_errors: true
+  when: container_names.stdout != ""
+~~~
+
+<br>
+<br>
 
 ### Grafana
+
+#### Provisioning (Grafana configs)
+
+##### dashboards
+
+These are our custom made dashboards based on existing dashboards, node_exporter dashboard for example. These dashboard JSONs are extremely long so i will not post them here, instead i will link them:
+
+The dashboard for our container monitoring on each virtual machine:
+<a href=https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Code/management-vm/ansible/files/grafana/dashboards/applications/container-health.json>dashboards/applications/container-health.json</a>
+
+The dashboard for our whole vm infrastructure, the general vm health, cpu usage, RAM usage etc:
+<a href=https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Code/management-vm/ansible/files/grafana/dashboards/infrastructure/vm-infrastructure-overview.json>dashboards/infrastructure/vm-infrastructure-overview.json
+
+
+
+
+#### deploy_grafana.yaml
+~~~yaml
+---
+- name: Deploy Grafana
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Create Grafana provisioning directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        recurse: true
+        mode: "0755"
+      loop:
+        - /home/Filip/grafana/provisioning/datasources
+        - /home/Filip/grafana/provisioning/dashboards/infrastructure
+        - /home/Filip/grafana/provisioning/dashboards/applications
+
+    - name: Deploy Grafana datasource
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/datasources/datasource.yml
+        dest: /home/Filip/grafana/provisioning/datasources/datasource.yml
+        mode: "0644"
+
+    - name: Deploy dashboards provisioning config
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/dashboards/dashboards.yml
+        dest: /home/Filip/grafana/provisioning/dashboards/dashboards.yml
+        mode: "0644"
+
+    - name: Deploy infrastructure dashboard
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/dashboards/infrastructure/vm-infrastructure-overview.json
+        dest: /home/Filip/grafana/provisioning/dashboards/infrastructure/vm-infrastructure-overview.json
+        mode: "0644"
+
+    - name: Deploy applications dashboard
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/dashboards/applications/container-health.json
+        dest: /home/Filip/grafana/provisioning/dashboards/applications/container-health.json
+        mode: "0644"
+
+    - name: Create Grafana alerting provisioning directory
+      ansible.builtin.file:
+        path: /home/Filip/grafana/provisioning/alerting
+        state: directory
+        mode: "0755"
+
+    - name: Deploy Grafana alerting config
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/alerting/alerting.yml
+        dest: /home/Filip/grafana/provisioning/alerting/alerting.yml
+        mode: "0644"
+
+    - name: Deploy alert rules
+      ansible.builtin.copy:
+        src: /opt/ansible/files/grafana/provisioning/alerting/alert-rules.yml
+        dest: /home/Filip/grafana/provisioning/alerting/alert-rules.yml
+        mode: "0644"
+
+    - name: Run Grafana container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: grafana
+        image_name: grafana
+        tag: "alpine-3.22.2"
+        container_ports:
+          - "3000:3000"
+        container_volumes:
+          - "/home/Filip/grafana/provisioning:/etc/grafana/provisioning:Z"
+          - "/home/jonatan/grafana:/etc/grafana:Z"
+          - "/etc/ipa:/etc/ipa:Z"
+        container_state: started
+        container_restart_policy: always
+        container_network: host
+~~~
+
+#### kill_grafana.yaml
+~~~yaml
+---
+- name: Kill Grafana
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Stop and remove Grafana
+      ansible.builtin.shell: |
+        podman stop grafana 2>/dev/null || true
+        podman rm grafana 2>/dev/null || true
+        echo "Done"
+      register: result
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg: "{{ result.stdout }}"
+~~~
 
 ### Showcase VM
 
