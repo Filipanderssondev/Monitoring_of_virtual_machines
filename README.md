@@ -567,14 +567,295 @@ curl http://localhost:9090
 
 These are our custom made dashboards based on existing dashboards, node_exporter dashboard for example. These dashboard JSONs are extremely long so i will not post them here, instead i will link them:
 
-The dashboard for our container monitoring on each virtual machine:
+###### The dashboard for our container monitoring on each virtual machine: <br>
 <a href=https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Code/management-vm/ansible/files/grafana/dashboards/applications/container-health.json>dashboards/applications/container-health.json</a>
 
-The dashboard for our whole vm infrastructure, the general vm health, cpu usage, RAM usage etc:
+###### The dashboard for our whole vm infrastructure, the general vm health, cpu usage, RAM usage etc: <br>
 <a href=https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Code/management-vm/ansible/files/grafana/dashboards/infrastructure/vm-infrastructure-overview.json>dashboards/infrastructure/vm-infrastructure-overview.json
 
+##### alerting
 
+###### alert-rules.yml
+~~~yaml
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: Infrastructure
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: vm-down
+        title: VM Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: up{job=~".*VM.*"}
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: lt
+                    params: [1]
+                  query:
+                    params: [A]
+        for: 1m
+        annotations:
+          summary: "VM {{ $labels.instance }} is down"
+        labels:
+          severity: critical
 
+      - uid: high-cpu
+        title: High CPU Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [85]
+                  query:
+                    params: [A]
+        for: 5m
+        annotations:
+          summary: "High CPU on {{ $labels.instance }}: {{ $values.A }}%"
+        labels:
+          severity: warning
+
+      - uid: high-memory
+        title: High Memory Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+                  query:
+                    params: [A]
+        for: 5m
+        annotations:
+          summary: "High memory on {{ $labels.instance }}: {{ $values.A }}%"
+        labels:
+          severity: warning
+
+      - uid: disk-filling
+        title: Disk Filling Up
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: 100 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [80]
+                  query:
+                    params: [A]
+        for: 5m
+        annotations:
+          summary: "Disk usage high on {{ $labels.instance }}: {{ $values.A }}%"
+        labels:
+          severity: warning
+
+      - uid: container-down
+        title: Container Down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: podman_container_running_state == 0
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  query:
+                    params: [A]
+        for: 1m
+        annotations:
+          summary: "Container {{ $labels.name }} is down on {{ $labels.instance }}"
+        labels:
+          severity: critical
+
+      - uid: nginx-errors
+        title: Nginx High Error Rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: rate(nginx_http_requests_total{status=~"5.."}[5m])
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+                  query:
+                    params: [A]
+        for: 5m
+        annotations:
+          summary: "High Nginx error rate on {{ $labels.instance }}"
+        labels:
+          severity: warning
+
+      - uid: postgres-connections
+        title: Postgres High Connections
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: Prometheus
+            model:
+              expr: sum by(instance) (pg_stat_activity_count)
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [80]
+                  query:
+                    params: [A]
+        for: 5m
+        annotations:
+          summary: "High Postgres connections on {{ $labels.instance }}: {{ $values.A }}"
+        labels:
+          severity: warning
+~~~
+
+###### alerting.yml
+~~~yaml
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: ntfy
+    receivers:
+      - uid: ntfy-webhook
+        type: webhook
+        settings:
+          url: http://10.208.12.102:9093/alerts
+          httpMethod: POST
+
+policies:
+  - orgId: 1
+    receiver: ntfy
+    group_by: [severity]
+    routes:
+      - receiver: ntfy
+        matchers:
+          - severity = critical
+        group_wait: 0s
+      - receiver: ntfy
+        matchers:
+          - severity = warning
+        group_wait: 30s
+~~~
+
+#### datasource
+##### datasource.yml
+~~~yaml
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: Prometheus
+    url: http://10.208.12.102:9090
+    access: proxy
+    isDefault: true
+~~~
 
 #### deploy_grafana.yaml
 ~~~yaml
