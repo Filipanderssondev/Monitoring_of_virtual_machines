@@ -30,7 +30,7 @@ Kort sammanfattning av dokumentet
     and
     <i><a href="https://github.com/JonatanHogild">Jonatan Högild</a></i>
     <br>
-    dd-mm-yyyy
+    26-03-2026
     <br clear="left"/>
   </p>
 </div>
@@ -515,6 +515,20 @@ sudo systemctl disable cockpit
 sudo dnf remove cockpit-*
 ```
 
+#### Prometheus Firewall Configuration
+
+Prometheus is simple enough, since we don't need to access it externally. Prometheus only needs to connect with Grafana on the local host, and for this, we need to add a firewall rule. Create a new security-group called *prometheus-in*:
+
+<pre>
+Direction: in
+Action: ACCEPT
+Enable: yes
+Protocol: tcp
+Dest. port: 9090
+Log level: info
+</pre>
+
+Add this security-group on the *metrics-01* VM.
 
 
 Test that the container is running correctly:
@@ -565,6 +579,10 @@ curl http://localhost:9090
 
 ##### dashboards
 
+*showcase-01* should now be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
+
+There already exists plenty of [ready-made dashboard templates](https://grafana.com/grafana/dashboards/) for Grafana we can use. For Node exporter, we'll use the [Node Exporter Full](https://github.com/rfmoz/grafana-dashboards?tab=readme-ov-file#node-exporter-full) template. Dashboards are written in JSON, so if we'd like, we can edit them on the command-line, or graphically in Grafana. 
+
 These are our custom made dashboards based on existing dashboards, node_exporter dashboard for example. These dashboard JSONs are extremely long so i will not post them here, instead i will link them:
 
 ###### The dashboard for our container monitoring on each virtual machine: <br>
@@ -572,6 +590,11 @@ These are our custom made dashboards based on existing dashboards, node_exporter
 
 ###### The dashboard for our whole vm infrastructure, the general vm health, cpu usage, RAM usage etc: <br>
 <a href=https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/blob/main/Code/management-vm/ansible/files/grafana/dashboards/infrastructure/vm-infrastructure-overview.json>dashboards/infrastructure/vm-infrastructure-overview.json
+
+
+
+
+<!--
 
 ##### alerting
 
@@ -844,6 +867,14 @@ policies:
         group_wait: 30s
 ~~~
 
+
+
+-->
+
+
+
+
+
 #### datasource
 ##### datasource.yml
 ~~~yaml
@@ -954,6 +985,30 @@ datasources:
         msg: "{{ result.stdout }}"
 ~~~
 
+#### Grafana Firewall Configuration
+
+We want Grafana to be accessable from the *showcase-01* VM, so we'll make security-groups for both inbound and outbound rules:
+
+<pre>
+Direction: in
+Action: ACCEPT
+Enable: yes
+Protocol: tcp
+Dest. port: 3000
+Log level: info
+</pre>
+
+<pre>
+Direction: out
+Action: ACCEPT
+Enable: yes
+Protocol: tcp
+Dest. port: 3000
+Log level: info
+</pre>
+
+Apply the *grafana-in* rule on *metrics-01* and apply the *grafana-out* rule on *showcase-01*. 
+
 ### Showcase VM
 
 A new VM will be used to run web-applications from a browser. This is necessary for visualizing our data with Grafana. We will use a Rocky Linux image that comes with a preinstalled desktop environment.
@@ -1015,53 +1070,6 @@ Network:
 Configure the Proxmox Firewall on this VM so that it mirrors the other VMs. 
 
 Start the VM. Configure IP-addresses, gateway and DNS, pick 'workstation' as software, and install.
-
-### Firewall Configuration
-
-In the Proxmox Firewall, we will now set up rules for Prometheus and Grafana. Prometheus is simple enough, since we don't need to access it externally. Prometheus only needs to connect with Grafana on the local host, and for this, we need to add a firewall rule. Create a new security-group called *prometheus-in*:
-
-<pre>
-Direction: in
-Action: ACCEPT
-Enable: yes
-Protocol: tcp
-Dest. port: 9090
-Log level: info
-</pre>
-
-Add this security-group on the *metrics-01* VM.
-
-We want Grafana to be accessable from the *showcase-01* VM, so we'll make security-groups for both inbound and outbound rules:
-
-<pre>
-Direction: in
-Action: ACCEPT
-Enable: yes
-Protocol: tcp
-Dest. port: 3000
-Log level: info
-</pre>
-
-<pre>
-Direction: out
-Action: ACCEPT
-Enable: yes
-Protocol: tcp
-Dest. port: 3000
-Log level: info
-</pre>
-
-Apply the *grafana-in* rule on *metrics-01* and apply the *grafana-out* rule on *showcase-01*. 
-
-### Grafana Dashbaords
-
-*showcase-01* should now be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
-
-
-#### Add a dashboard
-
-There already exists plenty of [ready-made dashboard templates](https://grafana.com/grafana/dashboards/) for Grafana we can use. For Node exporter, we'll use the [Node Exporter Full](https://github.com/rfmoz/grafana-dashboards?tab=readme-ov-file#node-exporter-full) template. Dashboards are written in JSON, so if we'd like, we can edit them on the command-line, or graphically in Grafana. 
-
 
 
 ### Grafana Alerts
@@ -1275,7 +1283,11 @@ Stop and remove the current Grafana container, then redeploy using the playbook.
 
 
 ## Conclusion
-Slutsats
+We concluded that the stack works reliably for our setup once we stopped forcing Docker-based tools and adapted it to Podman—switching from cAdvisor to Podman Exporter made a big difference in getting accurate, stable metrics.
+
+Overall, we feel the project was challenging in the beginning, especially with compatibility issues, but it became much more straightforward once we understood the tooling better. In the end, we built something practical that we actually trust and could see being used in a real environment. We are very proud.
+
+This concludes our internship. Thank you for reading!
 
 ## References
 - [FreeIPA](https://www.freeipa.org/)
