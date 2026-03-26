@@ -110,10 +110,103 @@ Future improvements, refinements, or corrections may be introduced through contr
 ## Acknowledgments
 We would like to thank <a href=https://github.com/rafaelurrutiasilva>Rafael Urrutia</a> for his continuous support and guidance.
 
+
 ## Implementation
 
-### Node Exporter
+#### Playbooks
+For each step in this process we will have a _deploy_exaple.yaml_ and a _kill_example.yaml_ instead of stopping and removing running containers, because each time we have to test a new feature or solve issues we have to remove the old container and build a new one.
+Every file is available under <a href=https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/tree/main/Code/management-vm/ansible>Code</a>
 
+#### Config files
+Each additional configuration files to go with the containers will be loccated under <a href=https://github.com/Filipanderssondev/Monitoring_of_virtual_machines/tree/main/Code/management-vm/ansible/files>_ansible/files_</a> 
+
+#### Overview
+```bash
+├── ansible.cfg
+├── files
+│   ├── certificates
+│   │   ├── app-01-certs
+│   │   │   ├── 10.208.12.103+1-key.pem
+│   │   │   └── 10.208.12.103+1.pem
+│   │   ├── metrics-01-certs
+│   │   │   ├── 10.208.12.102-key.pem
+│   │   │   └── 10.208.12.102.pem
+│   │   └── mkcert-v1.4.4-linux-amd64
+│   ├── grafana
+│   │   ├── dashboards
+│   │   │   ├── applications
+│   │   │   │   └── container-health.json
+│   │   │   └── infrastructure
+│   │   │       └── vm-infrastructure-overview.json
+│   │   └── provisioning
+│   │       ├── alerting
+│   │       │   ├── alerting.yml
+│   │       │   └── alert-rules.yml
+│   │       ├── dashboards
+│   │       │   └── dashboards.yml
+│   │       └── datasources
+│   │           └── datasource.yml
+│   ├── nginx
+│   │   └── nginx.conf
+│   └── prometheus
+│       └── prometheus.yml
+├── inventory
+│   ├── group_vars
+│   │   └── all
+│   │       └── vault.yml
+│   └── hosts.ini
+├── playbooks
+│   ├── application
+│   │   ├── deploy_app.yaml
+│   │   ├── deploy_frontend.yaml
+│   │   ├── kill_applications.yaml
+│   │   ├── kill_backend.yaml
+│   │   ├── kill_frontend.yaml
+│   ├── mail
+│   │   └── install_postfix_client.yml
+│   └── monitoring
+│       ├── deploy_grafana.yaml
+│       ├── deploy_monitoring.yaml
+│       ├── deploy_node-exporter.yaml
+│       ├── deploy_podman-exporter.yaml
+│       ├── deploy_prometheus.yaml
+│       ├── kill_grafana.yaml
+│       ├── kill_monitoring.yaml
+│       ├── kill_node-exporter_on_ipa.yaml
+│       ├── kill_node-exporter.yaml
+│       └── kill_podman-exporter.yaml
+└── roles
+    └── containers
+        ├── images
+        │   └── pull
+        │       ├── defaults
+        │       │   └── main.yaml
+        │       └── tasks
+        │           └── main.yaml
+        ├── install
+        │   └── tasks
+        │       └── main.yaml
+        ├── kill
+        │   └── tasks
+        │       └── main.yaml
+        ├── login
+        │   ├── filip
+        │   │   ├── defaults
+        │   │   │   └── main.yaml
+        │   │   └── tasks
+        │   │       └── main.yaml
+        └── run
+            ├── defaults
+            │   └── main.yaml
+            └── tasks
+                └── main.yaml
+         
+```
+
+
+### Node Exporter playbooks
+
+#### Node exporter
 Node exporter is [one of many exporters](https://prometheus.io/docs/instrumenting/exporters/) available to Prometheus. Its purpose is to collect hardware information, and Prometheus collects it. 
 
 Node exporter will be deployed on all VMs as a Podman-created container. The [following parameters](https://github.com/prometheus/node_exporter?tab=readme-ov-file#docker) are used:<br>
@@ -126,22 +219,78 @@ Node exporter will be deployed on all VMs as a Podman-created container. The [fo
 * `-p 9100:9100` - Port mapping [host]:[container]. 
 * `--path.rootfs=/host` - Is not a podman option. It's passed directly to node exporter, stating that the root filesystem is located at `/host` and not `/`. <br>
 
-Though, instead of using Podman directly, we'll create a playbook that deploys node_exporter on all hosts.
+#### deploy_node-exporter.yaml
+~~~yaml
+---
+- name: Deploy Node Exporter on all VMs
+  hosts: all
+  roles:
+    - role: containers/install
+    - role: containers/login/filip
+  become: true
+  tasks:
+    - name: Pull Node Exporter image
+      include_role:
+        name: containers/images/pull
+      vars:
+        images_to_pull:
+          - manufacturer: prom
+            image_name: node-exporter
+            tag: latest
 
-> [PLACEHOLDER]
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
+    - name: Enable podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        state: started
+        enabled: true
+
+    - name: Run Node Exporter container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: node_exporter
+        manufacturer: prom
+        image_name: node-exporter
+        tag: latest
+        container_ports:
+          - "9100:9100"
+        pid: host
+        container_network: host
+        container_state: started
+        container_restart_policy: always
+        container_volumes:
+          - /:/host:ro,rslave
+        container_cmd:
+          - "--path.rootfs=/host"
+~~~
 
 Test to see if the containers are running:
 ```
 curl http://localhost:9090
 ```
+
+#### kill_node-exporter.yaml
+~~~yaml
+---
+- name: Remove Node Exporter on all VMs
+  hosts: all
+  become: true
+  tasks:
+    - name: Stop and remove Node Exporter container
+      containers.podman.podman_container:
+        name: node_exporter
+        state: absent
+
+    - name: Verify Node Exporter is gone
+      ansible.builtin.command:
+        cmd: podman ps -a --filter name=node_exporter --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: result
+      changed_when: false
+
+    - name: Print verification
+      ansible.builtin.debug:
+        msg: "{{ 'Node Exporter is gone' if result.stdout == '' else 'Node Exporter still exists!' }}"
+~~~
 
 #### Node exporter firewall rules
 
@@ -161,8 +310,91 @@ Log level: info
 Create the corresponding *out* rule in *node-exporter-out*. For every VM, apply the *node-exporter-out* security group. For the *metrics-01* VM, apply the *node-exporter-in* security group.
 The *metrics-01* VM will run the Promeptheus server, and collect all node exporter data. 
 
+### Podman exporter playbooks
+
+#### Prometheus Podman exporter instead of cAdvisor
+At first we were going to use cAdvisor as a container, but we encountered a lot of issues with cAdvisor since it’s mainly designed for Docker and doesn’t fully support Podman. cAdvisor relies on Docker-style metadata, so in our case some containers showed up with unclear IDs instead of names, and it was hard to distinguish between frontend, backend, and database. We also saw that some metrics, especially network and filesystem data, were missing or inconsistent, even with the correct mounts configured. Because of this, the monitoring wasn’t reliable enough, so we switched to a Podman exporter. That gave us more accurate container identification and more consistent metrics directly from the Podman engine.
+
+#### deploy_podman-exporter.yaml
+~~~yaml
+- name: Deploy Podman Exporter on all VMs
+  hosts: all
+  become: true
+
+  roles:
+    - role: containers/login/filip
+  tasks:
+    - name: Pull Podman Exporter image
+      include_role:
+        name: containers/images/pull
+      vars:
+        images_to_pull:
+          - image_name: prometheus-podman-exporter
+            tag: patched
+
+    - name: Enable podman socket
+      ansible.builtin.systemd:
+        name: podman.socket
+        state: started
+        enabled: true
+
+    - name: Run Podman Exporter container
+      include_role:
+        name: containers/run
+      vars:
+        container_name: podman_exporter
+        image_name: prometheus-podman-exporter
+        tag: patched
+        container_state: started
+        container_ports:
+          - "9882:9882"
+        container_network: host
+        container_volumes:
+          - "/run/podman/podman.sock:/run/podman/podman.sock:ro"
+        container_env_vars:
+          CONTAINER_HOST: "unix:///run/podman/podman.sock"
+        container_user: root
+        container_restart_policy: always
+        container_security_opt:
+          - "label=disable"
+~~~
+
+#### kill_podman-exporter.yaml
+~~~yaml
+---
+- name: Remove Podman Exporter on application VM
+  hosts: all
+  become: true
+  tasks:
+    - name: Stop and remove Podman Exporter container
+      containers.podman.podman_container:
+        name: podman_exporter
+        state: absent
+
+    - name: Verify Podman Exporter is gone
+      ansible.builtin.command:
+        cmd: podman ps -a --filter name=podman_exporter --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: result
+      changed_when: false
+
+    - name: Print verification
+      ansible.builtin.debug:
+        msg: "{{ 'Podman Exporter is gone' if result.stdout == '' else 'Podman Exporter still exists!' }}"
+~~~
+
+#### Firewall rule for Prometheus Podman exporter
+
+Create 2 new security groups, *podman-exporter-in* and *podman-exportr-out*, add inbound and outbound rules respectively.
+
+On *app-01*, apply the *podman-exporter-in* secuirty-group. On *metrics-01*, apply the *podman-exportr-out* rule. 
+
 
 ### Prometheus
+
+#### Scrape configs
+Since both node exporter and podman exporter is deployed where they should be, we have to configure a prometheus.yml, configurations to be deployed together with the prometheus container and map it into the prometheus container. 
+
+
 
 If you want to assign port 9090 to Prometheus, be aware that this port may already be occupied on Rocky Linux by a system-service called *cockpit*:
 ```
@@ -182,33 +414,8 @@ Test that the container is running correctly:
 curl http://localhost:9090
 ```
 
-### Prometheus Podman Exporter
-
-> [PLACEHOLDER]
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
-> <br>
-
-#### Firewall rule for Prometheus Podman exporter
-
-Create 2 new security groups, *podman-exporter-in* and *podman-exportr-out*, add inbound and outbound rules respectively.
-
-On *app-01*, apply the *podman-exporter-in* secuirty-group. On *metrics-01*, apply the *podman-exportr-out* rule. 
 
 ### Grafana
-
-```bash
-podman run -d \
-  --name grafana \
-  --restart=always \
-  -p 3000:3000 \
-  docker.io/grafana/grafana
-```
 
 ### Showcase VM
 
@@ -313,15 +520,6 @@ Apply the *grafana-in* rule on *metrics-01* and apply the *grafana-out* rule on 
 
 *showcase-01* should now be able to access Grafana from a web-browser using `http://<metrics-01>:3000`. Default Grafana login is `admin / admin`. 
 
-<!--
-#### Add Prometheus as Data Source
-
-Settings > Data Sources > Add Prometheus
-
-URL:
-```
-http://<metrics-01>:9090
-```-->
 
 #### Add a dashboard
 
