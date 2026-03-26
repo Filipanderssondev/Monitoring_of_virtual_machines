@@ -1,0 +1,52 @@
+---
+- name: Generate certs on Showcase VM
+  hosts: desktop
+  become: true
+  tasks:
+    - name: Ensure certs directory exists
+      file:
+        path: /home/Filip/certificates
+        state: directory
+
+    - name: Copy mkcert binary to Showcase
+      copy:
+        src: /opt/ansible/files/certificates/mkcert-v1.4.4-linux-amd64
+        dest: /home/Filip/certs/mkcert
+        mode: '0755'
+
+    - name: Generate cert for monitoring VM
+      command: ./mkcert 10.208.12.102
+      args:
+        chdir: /home/Filip/certs
+
+    - name: Install rootCA
+      command: ./mkcert -install
+      args:
+        chdir: /home/Filip/certs
+
+    - name: Copy rootCA to certs directory
+      copy:
+        src: /home/Filip/.local/share/mkcert/rootCA.pem
+        dest: /home/Filip/certs/rootCA.pem
+        remote_src: true
+
+    - name: Fetch cert back to Mgmt-01
+      fetch:
+        src: /home/Filip/certs/10.208.12.102.pem
+        dest: /opt/ansible/files/certificates/monitoring-certs/
+        flat: true
+
+    - name: Fetch cert key back to Mgmt-01
+      fetch:
+        src: /home/Filip/certs/10.208.12.102-key.pem
+        dest: /opt/ansible/files/certificates/monitoring-certs/
+        flat: true
+
+    - name: Import rootCA into Firefox
+      command: >
+        certutil -A
+        -n "mkcert"
+        -t "CT,,"
+        -i /home/Filip/.local/share/mkcert/rootCA.pem
+        -d /home/Filip/.mozilla/firefox/4w84f1uv.default-default
+      ignore_errors: true

@@ -3,6 +3,16 @@
   hosts: monitoring
   become: true
   tasks:
+    - name: Ensure certs directory exists on monitoring VM
+      file:
+        path: /home/Filip/certs
+        state: directory
+
+    - name: Copy certs to monitoring VM
+      copy:
+        src: /opt/ansible/files/certificates/monitoring-certs/
+        dest: /home/Filip/certs/
+
     - name: Create Grafana provisioning directories
       ansible.builtin.file:
         path: "{{ item }}"
@@ -72,3 +82,8 @@
         container_state: started
         container_restart_policy: always
         container_network: host
+        container_env_vars:
+          GF_SERVER_PROTOCOL: https
+          GF_SERVER_CERT_FILE: /certs/10.208.12.102.pem
+          GF_SERVER_CERT_KEY: /certs/10.208.12.102-key.pem
+
