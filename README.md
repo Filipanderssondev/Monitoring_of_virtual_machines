@@ -53,10 +53,8 @@ Kort sammanfattning av dokumentet
     10.3 [Prometheus Podman Exporter](#prometheus-podman-exporter) <br>
     10.4 [Grafana](#grafana) <br>
     10.5 [Showcase VM](#showcase-vm) <br>
-    10.6 [Firewall Configuration](#firewall-configuration) <br>
-    10.7 [Grafana Dashboards](grafana-dashboards) <br>
-    10.8 [Grafana Alerts](#grafana-alerts) <br>
- 	10.9 [FreeIPA integration with Grafana](#freeipa-integration-with-grafana) <br>
+    10.6 [Grafana Alerts](#grafana-alerts) <br>
+ 	10.7 [FreeIPA integration with Grafana](#freeipa-integration-with-grafana) <br>
 11. [Conclusion](#conclusion)
 12. [References](#references) <br>
 	12.1 [Other projects in our virtual IT-enviroment](#other-projects-in-our-virtual-it-enviroment)
